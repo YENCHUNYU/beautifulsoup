@@ -9,6 +9,7 @@ from typing import Iterable
 from bs4 import (
     BeautifulSoup,
     GuessedAtParserWarning,
+    SoupReplacer,
     dammit,
 )
 from bs4.builder import (
@@ -41,6 +42,21 @@ from typing import Type
 
 
 class TestConstructor(SoupTest):
+    def test_soup_replacer_replaces_tag_during_parsing(self):
+        replacer = SoupReplacer("b", "blockquote")
+        soup = self.soup("<p>Some <b>bold</b> text</p>", replacer=replacer)
+
+        assert soup.blockquote.string == "bold"
+        assert soup.b is None
+
+    def test_soup_replacer_leaves_other_tags_unchanged(self):
+        replacer = SoupReplacer("b", "blockquote")
+        soup = self.soup("<p><b>bold</b><i>italic</i></p>", replacer=replacer)
+
+        assert soup.blockquote.string == "bold"
+        assert soup.i.string == "italic"
+        assert soup.p is not None
+
     def test_short_unicode_input(self):
         data = "<h1>éé</h1>"
         soup = self.soup(data)

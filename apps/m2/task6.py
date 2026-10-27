@@ -1,9 +1,9 @@
 import sys
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, SoupReplacer
 
 # Check command-line arguments
 if len(sys.argv) < 2:
-    print("Usage: python3 task1.py <filename>")
+    print("Usage: python3 task6.py <filename>")
     sys.exit(1) # terminate the program and indicate that an error occurred.
 
 file_name = sys.argv[1]
@@ -19,16 +19,11 @@ except FileNotFoundError:
 
 # Parse HTML or XML into a tree
 if file_name.lower().endswith(".xml"):
-    soup = BeautifulSoup(content, "xml")
-    output_file = "output.xml"
+    parser = "xml"
 else:
-    soup = BeautifulSoup(content, "html.parser")
-    output_file = "output.html"
+    parser = "html.parser"
 
-# Find all b tags and change the tag name to "blockquote".
-bold_tags = soup.find_all("b")
-for tag in bold_tags:
-    tag.name = "blockquote"
+soup = BeautifulSoup(content, parser, replacer=SoupReplacer("b", "blockquote"))
 
 # Write the modified HTML tree to a file.
 with open("outputB.html", "w", encoding="utf-8") as file:

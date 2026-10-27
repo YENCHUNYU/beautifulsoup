@@ -77,3 +77,16 @@ PYTHONPATH=. python3 apps/m2/task6.py "../Test Files of Milestone1/sample.html"
 
 Two tests in `bs4/tests/test_soup.py` verify that matching tags are replaced
 and other tag names are left unchanged.
+
+### Part 3 implementation locations
+
+| API/function | File and line | Purpose |
+|---|---|---|
+| `SoupReplacer.__init__(og_tag, alt_tag)` | `bs4/filter.py:688` | Stores the tag name to replace and its replacement. |
+| `SoupReplacer.replace(name)` | `bs4/filter.py:692` | Returns the replacement name when `name` matches `og_tag`; otherwise returns the original name. |
+| `BeautifulSoup.__init__(..., replacer=None)` | `bs4/__init__.py:211` (argument at line 220) | Accepts the optional `replacer` object. |
+| `BeautifulSoup.handle_starttag(...)` | `bs4/__init__.py:994` | Replaces matching opening-tag names during parsing. |
+| `BeautifulSoup.handle_endtag(...)` | `bs4/__init__.py:1063` | Replaces matching closing-tag names during parsing. |
+| `test_soup_replacer_replaces_tag_during_parsing` | `bs4/tests/test_soup.py:45` | Tests that a matching tag is replaced. |
+| `test_soup_replacer_leaves_other_tags_unchanged` | `bs4/tests/test_soup.py:52` | Tests that other tag names are unchanged. |
+| Task 6 application | `apps/m2/task6.py:26` | Uses `SoupReplacer("b", "blockquote")` to replace `<b>` tags. |

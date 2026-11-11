@@ -189,6 +189,7 @@ class BeautifulSoup(Tag):
     currentTag: Optional[Tag]  #: :meta private:
     tagStack: List[Tag]  #: :meta private:
     open_tag_counter: CounterType[str]  #: :meta private:
+    _replacer_original_names: Dict[int, str]  #: :meta private:
     preserve_whitespace_tag_stack: List[Tag]  #: :meta private:
     string_container_stack: List[Tag]  #: :meta private:
     _most_recent_element: Optional[PageElement]  #: :meta private:
@@ -243,8 +244,8 @@ class BeautifulSoup(Tag):
          when parsing part of a document that would otherwise be too
          large to fit into memory.
 
-        :param replacer: A SoupReplacer. Tags with the specified original
-         name will be created with the replacement name during parsing.
+        :param replacer: A SoupReplacer. It can replace tag names or apply
+         transformations to each tag as it is created during parsing.
 
         :param from_encoding: A string indicating the encoding of the
          document to be parsed. Pass this in if Beautiful Soup is
@@ -684,6 +685,7 @@ class BeautifulSoup(Tag):
         self.preserve_whitespace_tag_stack = []
         self.string_container_stack = []
         self._most_recent_element = None
+        self._replacer_original_names = {}
         self.pushTag(self)
 
     def new_tag(
@@ -1027,13 +1029,7 @@ class BeautifulSoup(Tag):
 
         if self.replacer is not None:
             name = self.replacer.replace(name)
-
-        if (
-            self.parse_only
-            and len(self.tagStack) <= 1
-            and not self.parse_only.allow_tag_creation(nsprefix, name, attrs)
-        ):
-            return None
+        replacer_input_name = name
 
         tag_class = self.element_classes.get(Tag, Tag)
         # Assume that this is either Tag or a subclass of Tag. If not,
@@ -1054,6 +1050,21 @@ class BeautifulSoup(Tag):
         )
         if tag is None:
             return tag
+        if self.replacer is not None:
+            self.replacer.transform_tag(tag)
+            name = tag.name
+        if (
+            self.parse_only
+            and len(self.tagStack) <= 1
+            and not self.parse_only.allow_tag_creation(nsprefix, name, tag.attrs)
+        ):
+            return None
+        if (
+            self.replacer is not None
+            and self.replacer.name_xformer is not None
+            and tag.name != replacer_input_name
+        ):
+            self._replacer_original_names[id(tag)] = replacer_input_name
         if self._most_recent_element is not None:
             self._most_recent_element.next_element = tag
         self._most_recent_element = tag
@@ -1072,6 +1083,11 @@ class BeautifulSoup(Tag):
         self.endData()
         if self.replacer is not None:
             name = self.replacer.replace(name)
+            if self.replacer.name_xformer is not None:
+                for tag in reversed(self.tagStack):
+                    if self._replacer_original_names.get(id(tag)) == name:
+                        name = tag.name
+                        break
         self._popToTag(name, nsprefix)
 
     def handle_data(self, data: str) -> None:

@@ -441,6 +441,11 @@ class Element(BeautifulSoupNode):
             for name, value_or_values in list(normalized_attributes.items()):
                 self.element[name] = value_or_values
 
+        if hasattr(self, "element") and self.soup.replacer is not None:
+            self.soup.replacer.transform_tag(self.element)
+            # html5lib uses the wrapper name to match closing tags.
+
+        if attributes is not None and len(attributes) > 0:
             # The attributes may contain variables that need substitution.
             # Call set_up_substitutions manually.
             #

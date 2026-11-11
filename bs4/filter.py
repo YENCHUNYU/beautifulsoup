@@ -683,13 +683,43 @@ class SoupStrainer(ElementFilter):
 
 
 class SoupReplacer:
-    """Replace one tag name with another as the document is parsed."""
+    """Transform tags as the document is parsed."""
 
-    def __init__(self, og_tag: str, alt_tag: str):
+    def __init__(
+        self,
+        og_tag: Optional[str] = None,
+        alt_tag: Optional[str] = None,
+        *,
+        name_xformer: Optional[Callable[[Tag], str]] = None,
+        attrs_xformer: Optional[Callable[[Tag], _RawAttributeValues]] = None,
+        xformer: Optional[Callable[[Tag], None]] = None,
+    ):
+        if (og_tag is None) != (alt_tag is None):
+            raise ValueError("og_tag and alt_tag must be provided together.")
         self.og_tag = og_tag
         self.alt_tag = alt_tag
+        self.name_xformer = name_xformer
+        self.attrs_xformer = attrs_xformer
+        self.xformer = xformer
 
     def replace(self, name: str) -> str:
         if name == self.og_tag:
-            return self.alt_tag
+            return cast(str, self.alt_tag)
         return name
+
+    def transform_name(self, tag: Tag) -> None:
+        """Transform a tag's name, if a name transformer was provided."""
+        if self.name_xformer is not None:
+            tag.name = self.name_xformer(tag)
+
+    def transform_tag(self, tag: Tag, transform_name: bool = True) -> None:
+        """Apply configured transformations to a newly parsed tag."""
+        if transform_name:
+            self.transform_name(tag)
+        if self.attrs_xformer is not None:
+            new_attrs = self.attrs_xformer(tag)
+            tag.attrs.clear()
+            for name, value in new_attrs.items():
+                tag.attrs[name] = value
+        if self.xformer is not None:
+            self.xformer(tag)

@@ -57,6 +57,85 @@ class TestConstructor(SoupTest):
         assert soup.i.string == "italic"
         assert soup.p is not None
 
+    def test_soup_replacer_name_xformer_replaces_tags_during_parsing(self):
+        replacer = SoupReplacer(
+            name_xformer=lambda tag: "blockquote" if tag.name == "b" else tag.name
+        )
+        soup = self.soup("<p><b>bold</b><i>italic</i></p>", replacer=replacer)
+
+        assert soup.blockquote.string == "bold"
+        assert soup.b is None
+        assert soup.i.string == "italic"
+
+    def test_soup_replacer_name_xformer_receives_tag_attributes(self):
+        replacer = SoupReplacer(
+            name_xformer=lambda tag: (
+                "strong"
+                if tag.name == "b" and tag.get("role") == "emphasis"
+                else tag.name
+            )
+        )
+        soup = self.soup(
+            '<b role="emphasis">bold</b><b>plain</b>', replacer=replacer
+        )
+
+        assert soup.strong.string == "bold"
+        assert soup.b.string == "plain"
+
+    def test_soup_replacer_attrs_xformer_replaces_attributes(self):
+        replacer = SoupReplacer(
+            attrs_xformer=lambda tag: {
+                "id": tag.get("id", "").upper(),
+                "data-name": tag.name,
+            }
+        )
+        soup = self.soup('<p id="first">text</p>', replacer=replacer)
+
+        assert soup.p.attrs == {"id": "FIRST", "data-name": "p"}
+
+    def test_soup_replacer_xformer_can_mutate_tag(self):
+        def remove_class_attr(tag):
+            if "class" in tag.attrs:
+                del tag.attrs["class"]
+
+        soup = self.soup(
+            '<p class="sample">text</p>',
+            replacer=SoupReplacer(xformer=remove_class_attr),
+        )
+
+        assert soup.p.attrs == {}
+
+    def test_soup_replacer_applies_transformers_in_order(self):
+        def replace_attrs(tag):
+            return {"data-name": tag.name}
+
+        def add_marker(tag):
+            tag["data-marker"] = "added"
+
+        replacer = SoupReplacer(
+            name_xformer=lambda tag: "section" if tag.name == "div" else tag.name,
+            attrs_xformer=replace_attrs,
+            xformer=add_marker,
+        )
+        soup = self.soup('<div class="old">text</div>', replacer=replacer)
+
+        assert soup.section.attrs == {
+            "data-name": "section",
+            "data-marker": "added",
+        }
+
+    def test_soup_replacer_name_xformer_keeps_closing_tags_matched(self):
+        replacer = SoupReplacer(
+            name_xformer=lambda tag: "section" if tag.name == "div" else tag.name
+        )
+        soup = self.soup(
+            "<div><div>inner</div>outer</div><p>after</p>", replacer=replacer
+        )
+
+        assert soup.section.contents[0].name == "section"
+        assert soup.section.get_text() == "innerouter"
+        assert soup.p.string == "after"
+
     def test_short_unicode_input(self):
         data = "<h1>éé</h1>"
         soup = self.soup(data)

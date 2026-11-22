@@ -194,6 +194,10 @@ class BeautifulSoup(Tag):
     string_container_stack: List[Tag]  #: :meta private:
     _most_recent_element: Optional[PageElement]  #: :meta private:
 
+    def __iter__(self) -> Iterator[PageElement]:
+        """Iterate over all nodes in the document in tree order."""
+        return self.descendants
+
     #: Beautiful Soup's best guess as to the character encoding of the
     #: original document.
     original_encoding: Optional[_Encoding]

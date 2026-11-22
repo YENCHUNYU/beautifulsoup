@@ -338,6 +338,54 @@ class TestConstructor(SoupTest):
         )
 
 
+class TestIteration(SoupTest):
+    def test_iter_visits_all_nodes_in_tree_order(self):
+        soup = self.soup("<a>before<b>inside</b>after</a><c></c>")
+
+        assert list(soup) == [
+            soup.a,
+            soup.a.contents[0],
+            soup.b,
+            soup.b.string,
+            soup.a.contents[2],
+            soup.c,
+        ]
+
+    def test_iter_includes_text_and_comments(self):
+        soup = self.soup("before<!-- comment --><p>text</p>after")
+        nodes = list(soup)
+
+        assert nodes[0] == "before"
+        assert isinstance(nodes[1], Comment)
+        assert nodes[1] == " comment "
+        assert nodes[2] is soup.p
+        assert isinstance(nodes[3], NavigableString)
+        assert nodes[3] == "text"
+        assert nodes[4] == "after"
+
+    def test_iter_includes_doctype(self):
+        soup = self.soup("<!DOCTYPE html><html><body>text</body></html>")
+
+        nodes = iter(soup)
+        doctype = next(nodes)
+        assert doctype is soup.contents[0]
+        assert str(doctype) == "html"
+
+    def test_iter_over_empty_soup(self):
+        assert list(self.soup("")) == []
+
+    def test_iter_returns_a_lazy_reusable_iterator(self):
+        soup = self.soup("<p>text</p>")
+        iterator = iter(soup)
+
+        assert iter(iterator) is iterator
+        assert next(iterator) is soup.p
+        assert next(iterator) is soup.p.string
+        with pytest.raises(StopIteration):
+            next(iterator)
+        assert next(iter(soup)) is soup.p
+
+
 class TestOutput(SoupTest):
     @pytest.mark.parametrize(
         "eventual_encoding,actual_encoding",
